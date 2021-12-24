@@ -1,0 +1,10 @@
+div {
+    /* padding: 5px 10px; */
+    /* border: 1px solid #0eaf52; */
+    background-color: #ddd;
+}
+
+div#app {
+    position: relative;
+    height: 300px;
+}
