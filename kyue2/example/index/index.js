@@ -37,6 +37,8 @@ const datasets = [
                 x: 200, y: 80
             }, {
                 x: 300, y: 200
+            }, {
+                x: 400, y: 100
             }
         ]
     },
@@ -57,6 +59,8 @@ const datasets = [
                 x: 200, y: 120
             }, {
                 x: 300, y: 300
+            }, {
+                x: 400, y: 200
             }
         ]
     }
@@ -179,7 +183,7 @@ var vm = new KyueCore({
                     y: top,
                     width: width - left - right,
                     height: height - top - bottom,
-                    stroke: '#999',
+                    stroke: '#ccc',
                     strokeWidth: 1
                 }
             })
@@ -202,17 +206,21 @@ var vm = new KyueCore({
                     props: {
                         points,
                         strokeWidth: 1,
-                        stroke: '#999'
+                        stroke: '#ccc'
                     }
                 })
                 xAxisLines.push(line)
 
                 var label = h('Text', {
-                    x: x,
-                    y: y1,
-                    text: String(d),
-                    fontSize: 14,
-                    fill: '#999'
+                    props: {
+                        x: x - 15,
+                        y: y2 + 5,
+                        width: 30,
+                        text: String(d),
+                        fontSize: 12,
+                        fill: '#aaa',
+                        align: 'center'
+                    }
                 })
 
                 xAxisLabels.push(label)
@@ -222,6 +230,7 @@ var vm = new KyueCore({
 
 
         var yAxisLines = []
+        var yAxisLabels = []
         var yscale = this.getScale('y')
         if (yscale) {
             var ticks = yscale.ticks()
@@ -235,10 +244,24 @@ var vm = new KyueCore({
                     props: {
                         points,
                         strokeWidth: 1,
-                        stroke: '#999'
+                        stroke: '#ccc'
                     }
                 })
                 yAxisLines.push(line)
+
+                var label = h('Text', {
+                    props: {
+                        x: x1 - 35,
+                        y: y - 6,
+                        width: 30,
+                        text: String(d),
+                        fontSize: 12,
+                        fill: '#aaa',
+                        align: 'right'
+                    }
+                })
+
+                yAxisLabels.push(label)
             })
         }
 
@@ -294,6 +317,7 @@ var vm = new KyueCore({
             h('Layer', {}, xAxisLines),
             h('Layer', {}, xAxisLabels),
             h('Layer', {}, yAxisLines),
+            h('Layer', {}, yAxisLabels),
             h('Layer', {}, children)
         ])
     }
