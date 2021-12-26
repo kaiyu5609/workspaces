@@ -5,13 +5,17 @@ import KyueCore from './core'
 
 var log = logger('example')
 
+console.log('图形组件注册【Scales】插件')
 KyueCore.use(KyueCore.Scales, {
     'key': 'params'
 })
+console.log('实例化【Scales】插件')
 var scales = new KyueCore.Scales({})
 // 内置比例尺不满足业务需求，可以注册自定义的比例尺
 class CustomLinear {}
 CustomLinear.id = 'customlinear'
+console.log('【scales】: 注册【CustomLinear】比例尺')
+console.log('')
 scales.register(CustomLinear)
 
 
@@ -52,7 +56,54 @@ const datasets = [
             }, {
                 x: 200, y: 120
             }, {
+                x: 300, y: 300
+            }
+        ]
+    }
+]
+
+const datasets2 = [
+    {
+        type: 'line',
+        xScaleId: 'x',
+        yScaleId: 'y',
+        color: '#0eaf52',
+        itemStyle: {
+            color: '#0eaf52'
+        },
+        data: [
+            {
+                x: 0, y: 50
+            }, {
+                x: 100, y: 100
+            }, {
+                x: 200, y: 80
+            }, {
+                x: 300, y: 200
+            }, {
+                x: 400, y: 100
+            }
+        ]
+    },
+    {
+        type: 'line',
+        xScaleId: 'x',
+        yScaleId: 'y',
+        color: 'red',
+        itemStyle: {
+            color: 'red'
+        },
+        data: [
+            {
+                x: 0, y: 100
+            }, {
+                x: 100, y: 150
+            }, {
+                x: 200, y: 120
+            }, {
                 x: 300, y: 50
+            }, {
+                x: 400, y: 60
             }
         ]
     }
@@ -66,7 +117,7 @@ var vm = new KyueCore({
             message: 'Hello Kyue!',
             options: {
                 chartArea: {
-                    left: 80,
+                    left: 60,
                     right: 60,
                     top: 30,
                     bottom: 30,
@@ -88,14 +139,19 @@ var vm = new KyueCore({
         }
     },
     methods: {
-        getScale(scaleType) {
-            return this.$scales.getScale(scaleType)
+        getScaleClass(type) {
+            return this.$scales.getScale(type)
         },
         loadData() {
             setTimeout(() => {
-                this.datasets = datasets || []
+                this.datasets = datasets2 || []
                 this.setState()
             }, 1000)
+
+            setTimeout(() => {
+                this.datasets = datasets || []
+                this.setState()
+            }, 2000)
         }
     },
     mounted() {
@@ -130,14 +186,72 @@ var vm = new KyueCore({
         ]
         let lines = []
         let circles = []
+
+        var xAxisLines = []
+        var xAxisLabels = []
+        var xscale = this.getScale('x')
+        if (xscale) {
+            var ticks = xscale.ticks()
+            ticks.forEach(d => {
+                var x = xscale.getValue(d)
+                var y1 = top
+                var y2 = height - bottom
+                var points = [x, y1, x, y2]
+
+                var line = h('Line', {
+                    props: {
+                        points,
+                        strokeWidth: 1,
+                        stroke: '#999'
+                    }
+                })
+                xAxisLines.push(line)
+
+                var label = h('Text', {
+                    x: x,
+                    y: y1,
+                    text: String(d),
+                    fontSize: 14,
+                    fill: '#999'
+                })
+
+                xAxisLabels.push(label)
+            })
+        }
+        console.log('xAxisLabels', xAxisLabels)
+
+
+        var yAxisLines = []
+        var yscale = this.getScale('y')
+        if (yscale) {
+            var ticks = yscale.ticks()
+            ticks.forEach(d => {
+                var y = yscale.getValue(d)
+                var x1 = left
+                var x2 = width - right
+                var points = [x1, y, x2, y]
+
+                var line = h('Line', {
+                    props: {
+                        points,
+                        strokeWidth: 1,
+                        stroke: '#999'
+                    }
+                })
+                yAxisLines.push(line)
+            })
+        }
+
+        console.log('yAxisLines', yAxisLines)
+
         this.datasets.forEach((dataset) => {
-            let xScale = this.scales[dataset.xScaleId]
-            let yScale = this.scales[dataset.yScaleId]
+            let xScale = this.getScale(dataset.xScaleId)
+            let yScale = this.getScale(dataset.yScaleId)
 
             let points = []
             dataset.data.forEach(d => {
-                let x = xScale.getX(d.x)
-                let y = yScale.getY(d.y)
+                let x = xScale.getValue(d.x)
+                let y = yScale.getValue(d.y)
 
                 // points
                 points.push(x, y)
@@ -156,6 +270,8 @@ var vm = new KyueCore({
                 })
                 circles.push(circle)
             })
+
+            // console.log('points', points)
             let line = h('Line', {
                 props: {
                     points,
@@ -171,9 +287,13 @@ var vm = new KyueCore({
         return h('Stage', {
             props: {
                 container: this.$options.el,
-                width, height
+                width, 
+                height
             }
         }, [
+            h('Layer', {}, xAxisLines),
+            h('Layer', {}, xAxisLabels),
+            h('Layer', {}, yAxisLines),
             h('Layer', {}, children)
         ])
     }

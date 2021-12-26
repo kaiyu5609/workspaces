@@ -36,6 +36,9 @@ export function initExtend(Kyue) {
         Sub.Scales = Super.Scales
         Sub.LinearScale = Super.LinearScale
         Sub.CategoryScale = Super.CategoryScale
+        
+        // Components
+        Sub.Line = Super.Line
 
         ASSET_TYPES.forEach(function (type) {
             Sub[type] = Super[type]

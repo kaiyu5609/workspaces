@@ -5,6 +5,7 @@ import { lifecycleMixin, mountComponent } from './lifecycle'
 import { patch } from '../vcanvas/patch'
 import Scales from '../plugins/Scales'
 import { LinearScale, CategoryScale } from '../../scales'
+import { Line } from '../../components'
 
 function Kyue(options) {
     if (process.env.NODE_ENV !== 'production' && !(this instanceof Kyue)) {
@@ -33,6 +34,8 @@ Kyue.prototype.__patch__ = patch
 Kyue.Scales = Scales
 Kyue.LinearScale = LinearScale
 Kyue.CategoryScale = CategoryScale
+
+Kyue.Line = Line
 
 /**
  * 1、给实例添加_init方法

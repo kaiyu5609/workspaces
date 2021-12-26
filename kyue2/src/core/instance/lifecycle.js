@@ -9,15 +9,6 @@ export function lifecycleMixin(Kyue) {
         } else {
             vm.$el = vm.__patch__(prevVnode, vnode)
         }
-
-        if (vm.$el) {
-            const layers = vm.$el.getLayers()
-            if (Array.isArray(layers)) {
-                for (let i = 0; i < layers.length; i++) {
-                    layers[i].draw()
-                }
-            }
-        }
     }
 }
 

@@ -7,7 +7,8 @@ let uid = 0
 
 export function initMixin(Kyue) {
     Kyue.prototype._init = function(options) {
-        console.log('实例初始化，vm._init()')
+        console.log('【vm】图形组件实例化，vm._init()')
+        console.log('')
 
         const vm = this
 

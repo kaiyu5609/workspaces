@@ -356,16 +356,6 @@
         } else {
           vm.$el = vm.__patch__(prevVnode, vnode);
         }
-
-        if (vm.$el) {
-          const layers = vm.$el.getLayers();
-
-          if (Array.isArray(layers)) {
-            for (let i = 0; i < layers.length; i++) {
-              layers[i].draw();
-            }
-          }
-        }
       };
     }
     function initLifecycle(vm) {
@@ -538,7 +528,8 @@
     let uid = 0;
     function initMixin(Kyue) {
       Kyue.prototype._init = function (options) {
-        console.log('实例初始化，vm._init()');
+        console.log('【vm】图形组件实例化，vm._init()');
+        console.log('');
         const vm = this;
         vm._uid = uid++;
         vm._isKyue = true;
@@ -625,14 +616,45 @@
       },
 
       appendChild(node, child) {
-        if (typeof node.add !== 'function') {
-          return;
+        /**
+         * node为DOM节点时，没有add方法
+         */
+        if (typeof node.add === 'function') {
+          node.add(child);
         }
-
-        node.add(child);
       }
 
     };
+
+    function sameVnode(a, b) {
+      return a.tag === b.tag;
+    }
+
+    function patchVnodeProps(elm, props, oldProps) {
+      let updatedProps = {};
+      let willUpdate = false;
+
+      for (let key in oldProps) {
+        let toRemove = !props.hasOwnProperty(key);
+
+        if (toRemove) {
+          elm.setAttr(key, undefined);
+        }
+      }
+
+      for (let key in props) {
+        let toAdd = props[key] !== oldProps[key];
+
+        if (toAdd) {
+          willUpdate = true;
+          updatedProps[key] = props[key];
+        }
+      }
+
+      if (willUpdate) {
+        elm.setAttrs(updatedProps);
+      }
+    }
 
     function createElm(vnode, parentElm) {
       const {
@@ -662,61 +684,84 @@
       }
     }
 
-    function updateEl(vnode, parentElm) {
-      const {
-        tag,
-        data,
-        children
-      } = vnode;
-
-      if (isDef(tag)) {
-        if (tag === 'Layer') {
-          parentElm.destroyChildren();
-        }
-
-        vnode.elm = nodeOps.createElement(tag, vnode);
-        createChildren(vnode, children);
-        insert(parentElm, vnode.elm);
+    function addVnodes(parentElm, vnodes, startIdx, endIdx) {
+      for (; startIdx <= endIdx; ++startIdx) {
+        createElm(vnodes[startIdx], parentElm);
       }
     }
 
-    function updateChildren(vnode, children) {
-      if (Array.isArray(children)) {
-        for (let i = 0; i < children.length; i++) {
-          updateEl(children[i], vnode.elm);
+    function removeVnodes(vnodes, startIdx, endIdx) {
+      for (; startIdx <= endIdx; ++startIdx) {
+        const ch = vnodes[startIdx];
+
+        if (isDef(ch)) {
+          if (isDef(ch.tag)) {
+            removeNode(ch.elm);
+          }
         }
       }
     }
 
-    function sameVnode(a, b) {
-      return a.tag === b.tag;
+    function removeNode(el) {
+      if (typeof el.destroy === 'function') {
+        el.destroy();
+      }
+    }
+
+    function updateChildren(parentElm, oldCh, newCh) {
+      let oldStartIdx = 0;
+      let oldEndIdx = oldCh.length - 1;
+      let oldStartVnode = oldCh[0];
+      let oldEndVnode = oldCh[oldEndIdx];
+      let newStartIdx = 0;
+      let newEndIdx = newCh.length - 1;
+      let newStartVnode = newCh[0];
+      let newEndVnode = newCh[newEndIdx]; // 更新
+
+      while (oldStartIdx <= oldEndIdx && newStartIdx <= newEndIdx) {
+        if (sameVnode(oldStartVnode, newStartVnode)) {
+          patchVnode(oldStartVnode, newStartVnode);
+          oldStartVnode = oldCh[++oldStartIdx];
+          newStartVnode = newCh[++newStartIdx];
+        }
+      } // 新增
+
+
+      if (oldStartIdx > oldEndIdx) {
+        addVnodes(parentElm, newCh, newStartIdx, newEndIdx);
+      } else if (newStartIdx > newEndIdx) {
+        removeVnodes(oldCh, oldStartIdx, oldEndIdx);
+      }
     }
 
     function patchVnode(oldVnode, vnode) {
+      if (oldVnode === vnode) {
+        return;
+      }
+
+      const elm = vnode.elm = oldVnode.elm;
       const props = vnode.data && vnode.data.props || {};
       const oldProps = oldVnode.data && oldVnode.data.props || {};
-      const children = vnode.children;
+      const oldCh = oldVnode.children;
+      const ch = vnode.children;
 
-      if (vnode.tag === 'Stage') {
-        let elm = vnode.elm = oldVnode.elm;
+      if (sameVnode(vnode, oldVnode)) {
+        patchVnodeProps(elm, props, oldProps);
+      }
 
-        for (let key in props) {
-          if (props[key] !== oldProps[key]) {
-            if (typeof elm[key] === 'function') {
-              elm[key](props[key]);
-            }
-          }
+      if (isDef(oldCh) && isDef(ch)) {
+        if (oldCh !== ch) {
+          updateChildren(elm, oldCh, ch);
         }
-
-        updateChildren(vnode, children);
-      } else {
-        createElm(vnode, oldVnode);
       }
     }
 
     function patch(oldVnode, vnode) {
+      /**
+       * 初始化，oldVnode为DOM节点，nodeType为1
+       * 更新阶段，oldVnode为虚拟vnode
+       */
       // console.log(oldVnode, vnode)
-      debugger;
       const isRealElement = oldVnode.nodeType === 1;
 
       if (!isRealElement && sameVnode(oldVnode, vnode)) {
@@ -902,6 +947,27 @@
         }
       }
       return max;
+    }
+
+    function min(values, valueof) {
+      let min;
+      if (valueof === undefined) {
+        for (const value of values) {
+          if (value != null
+              && (min > value || (min === undefined && value >= value))) {
+            min = value;
+          }
+        }
+      } else {
+        let index = -1;
+        for (let value of values) {
+          if ((value = valueof(value, ++index, values)) != null
+              && (min > value || (min === undefined && value >= value))) {
+            min = value;
+          }
+        }
+      }
+      return min;
     }
 
     function range(start, stop, step) {
@@ -4280,25 +4346,26 @@
       constructor(options) {
         this.id = options.id;
         this.type = options.type;
+        this.axis = options.axis;
       }
 
-      init(scaleOptions, options, datasets) {
-        console.log('CategoryScale.init...');
-        let dataset = datasets[0];
-        let {
-          data
-        } = dataset;
-        this.xScale = band().domain(range(data.length)).range([options.left, options.width - options.right]).padding(0.1);
-        this.yScale = linear$1().domain([0, max(data, d => d.y)]).nice().range([options.height - options.bottom, options.top]);
+      init(scaleOptions) {
+        console.log('【LinearScale】初始化...');
+        console.log('   scaleOptions：', scaleOptions);
+        this.scale = band().padding(0.1);
       }
 
-      getX(x) {
-        console.log(x, this.xScale(x));
-        return this.xScale(x);
+      update(data) {
+        const {
+          domain,
+          range
+        } = data;
+        this.scale.domain([domain.min, domain.max]).range([range.min, range.max]);
       }
 
-      getY(y) {
-        return this.yScale(y);
+      getValue(x) {
+        // console.log(x, this.scale(x))
+        return this.scale(x);
       }
 
     }
@@ -4308,24 +4375,30 @@
       constructor(options) {
         this.id = options.id;
         this.type = options.type;
+        this.axis = options.axis;
       }
 
-      init(scaleOptions, options, datasets) {
-        console.log('LinearScale.init...');
-        let dataset = datasets[0] || {};
-        let {
-          data = []
-        } = dataset;
-        this.xScale = linear$1().domain([0, max(data, d => d.x)]).nice().range([options.left, options.width - options.right]);
-        this.yScale = linear$1().domain([0, max(data, d => d.y)]).nice().range([options.height - options.bottom, options.top]);
+      init(scaleOptions) {
+        console.log('【LinearScale】初始化...');
+        console.log('   scaleOptions：', scaleOptions);
+        this.scale = linear$1().nice();
       }
 
-      getX(x) {
-        return this.xScale(x);
+      update(data) {
+        const {
+          domain,
+          range
+        } = data;
+        this.scale.domain([domain.min, domain.max]).range([range.min, range.max]);
       }
 
-      getY(y) {
-        return this.yScale(y);
+      getValue(x) {
+        // console.log(x, this.scale(x))
+        return this.scale(x);
+      }
+
+      ticks() {
+        return this.scale.ticks();
       }
 
     }
@@ -4337,10 +4410,13 @@
       }
 
       init(app) {
-        console.log('实例注册【Scales】插件，Scales.init(vm)');
-        console.log('   vm:', app);
+        console.log('   【scales】: scales.init(app)'); // console.log('       app:', app)
+
+        console.log('   【scales】: 注册【LinearScale】比例尺');
+        console.log('   【scales】: 注册【CategoryScale】比例尺');
         this.register(LinearScale);
         this.register(CategoryScale);
+        console.log('');
       }
 
       register(item) {
@@ -4374,6 +4450,8 @@
 
       Kyue.mixin({
         beforeCreate() {
+          console.log('【vm】图形组件创建之前，vm.beforeCreate()');
+
           if (isDef(this.$options.scales)) {
             this._scalesRoot = this; // vm
 
@@ -4393,6 +4471,41 @@
     }
 
     Scales.install = install;
+
+    class Line {
+      constructor(options) {}
+
+      init(options) {
+        console.log('【Line】初始化...');
+        console.log('   options', options);
+        const {
+          dataset,
+          xScale,
+          yScale
+        } = options;
+        this.dataset = dataset;
+        this.xScale = xScale;
+        this.yScale = yScale;
+      }
+
+      getDomain(axis) {
+        const {
+          data
+        } = this.dataset || [];
+        const min$1 = min(data, d => d[axis]);
+        const max$1 = max(data, d => d[axis]);
+        return {
+          min: min$1,
+          max: max$1
+        };
+      }
+
+      update() {
+        console.log('Line update');
+      }
+
+    }
+    Line.id = 'line';
 
     function Kyue(options) {
       if ( !(this instanceof Kyue)) {
@@ -4419,6 +4532,7 @@
     Kyue.Scales = Scales;
     Kyue.LinearScale = LinearScale;
     Kyue.CategoryScale = CategoryScale;
+    Kyue.Line = Line;
     /**
      * 1、给实例添加_init方法
      * 2、组件调用 $mount 方法进行挂载
@@ -4498,7 +4612,9 @@
 
         Sub.Scales = Super.Scales;
         Sub.LinearScale = Super.LinearScale;
-        Sub.CategoryScale = Super.CategoryScale;
+        Sub.CategoryScale = Super.CategoryScale; // Components
+
+        Sub.Line = Super.Line;
         ASSET_TYPES.forEach(function (type) {
           Sub[type] = Super[type];
         });

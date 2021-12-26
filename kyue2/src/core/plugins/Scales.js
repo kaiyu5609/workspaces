@@ -6,11 +6,14 @@ export default class Scales {
     }
 
     init(app) {
-        console.log('实例注册【Scales】插件，Scales.init(vm)')
-        console.log('   vm:', app)
+        console.log('   【scales】: scales.init(app)')
+        // console.log('       app:', app)
 
+        console.log('   【scales】: 注册【LinearScale】比例尺')
+        console.log('   【scales】: 注册【CategoryScale】比例尺')
         this.register(LinearScale)
         this.register(CategoryScale)
+        console.log('')
     }
 
     register(item) {
@@ -44,6 +47,7 @@ function install(Kyue, opts) {
 
     Kyue.mixin({
         beforeCreate() {
+            console.log('【vm】图形组件创建之前，vm.beforeCreate()')
             if (isDef(this.$options.scales)) {
                 this._scalesRoot = this// vm
                 this._scales = this.$options.scales

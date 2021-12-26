@@ -4,32 +4,25 @@ export default class CategoryScale {
     constructor(options) {
         this.id = options.id
         this.type = options.type
+        this.axis = options.axis
     }
 
-    init(scaleOptions, options, datasets) {
-        console.log('CategoryScale.init...')
+    init(scaleOptions) {
+        console.log('【LinearScale】初始化...')
+        console.log('   scaleOptions：', scaleOptions)
 
-        let dataset = datasets[0]
-        let { data } = dataset
-
-        this.xScale = d3.scaleBand()
-        .domain(d3.range(data.length))
-        .range([options.left, options.width - options.right])
-        .padding(0.1)
-
-        this.yScale = d3.scaleLinear()
-        .domain([0, d3.max(data, d => d.y)])
-        .nice()
-        .range([options.height - options.bottom, options.top])
+        this.scale = d3.scaleBand().padding(0.1)
     }
 
-    getX(x) {
-        console.log(x, this.xScale(x))
-        return this.xScale(x)
+    update(data) {
+        const { domain, range } = data
+        this.scale.domain([domain.min, domain.max])
+        .range([range.min, range.max])
     }
 
-    getY(y) {
-        return this.yScale(y)
+    getValue(x) {
+        // console.log(x, this.scale(x))
+        return this.scale(x)
     }
 }
 

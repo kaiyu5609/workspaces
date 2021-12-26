@@ -4,31 +4,29 @@ export default class LinearScale {
     constructor(options) {
         this.id = options.id
         this.type = options.type
+        this.axis = options.axis
     }
 
-    init(scaleOptions, options, datasets) {
-        console.log('LinearScale.init...')
+    init(scaleOptions) {
+        console.log('【LinearScale】初始化...')
+        console.log('   scaleOptions：', scaleOptions)
 
-        let dataset = datasets[0] || {}
-        let { data = [] } = dataset
-
-        this.xScale = d3.scaleLinear()
-        .domain([0, d3.max(data, d => d.x)])
-        .nice()
-        .range([options.left, options.width - options.right])
-
-        this.yScale = d3.scaleLinear()
-        .domain([0, d3.max(data, d => d.y)])
-        .nice()
-        .range([options.height - options.bottom, options.top])
+        this.scale = d3.scaleLinear().nice()
     }
 
-    getX(x) {
-        return this.xScale(x)
+    update(data) {
+        const { domain, range } = data
+        this.scale.domain([domain.min, domain.max])
+        .range([range.min, range.max])
     }
 
-    getY(y) {
-        return this.yScale(y)
+    getValue(x) {
+        // console.log(x, this.scale(x))
+        return this.scale(x)
+    }
+
+    ticks() {
+        return this.scale.ticks()
     }
 }
 
