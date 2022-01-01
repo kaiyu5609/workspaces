@@ -7,23 +7,23 @@ let uid = 0
 
 export function initMixin(Kyue) {
     Kyue.prototype._init = function(options) {
-        console.log('【vm】图形组件实例化，vm._init()')
-        console.log('')
-
         const vm = this
-
+        
         vm._uid = uid++
         
+        console.log(`【vm${vm._uid}】图形组件实例化，vm._init()`)
+
         vm._isKyue = true
 
-        if (options && options._isComponent) {
+        options = options || {}
+
+        if (options._isComponent) {
             // 优化内部组件实例化，因为动态选项合并非常慢，并且没有内部组件选项需要特殊处理。
             initInternalComponent(vm, options)
         } else {
-            debugger
             vm.$options = mergeOptions(
                 resolveConstructorOptions(vm.constructor),
-                options || {},
+                options,
                 vm
             )
         }

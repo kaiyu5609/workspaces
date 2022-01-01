@@ -12,7 +12,8 @@ const {
     getStyle,
     valueOrDefault,
     each,
-    mergeOptions
+    mergeOptions,
+    query
 } = util
 
 const ScaleClasses = {
@@ -25,8 +26,8 @@ const SeriesClasses = {
 
 const KyueCore = Kyue.extend({
     created() {
-        console.log('【vm】图形组件创建完成，vm.created()')
-        console.log('   图形组件获取【scales】插件，vm.$scales:', this.$scales)
+        console.log('【core】图形组件创建完成，vm.created()')
+        // console.log('   图形组件获取【scales】插件，vm.$scales:', this.$scales)
 
         this.options = mergeOptions({
             chartArea: {
@@ -47,16 +48,21 @@ const KyueCore = Kyue.extend({
             }
         }, this.options || {})
 
+        let el = this.$options.el
+        if (!el) throw 'el is not defined'
+        this.domEl = el && el.nodeType === 1 ? el : query(el)
+
         this.scales = {}
         this.datasets = []
         this._metasets = []
         this.series = []
         this.layouts = new Layouts()
+
+        this.getChartArea()
     },
     mounted() {
-        console.log('【vm】图形组件挂载完成，vm.mounted()')
+        console.log('【core】图形组件挂载完成，vm.mounted()')
         this._bindEvents()
-        this.setState()
     },
     methods: {
         _bindEvents() {
@@ -69,15 +75,15 @@ const KyueCore = Kyue.extend({
         },
         setState() {
             console.log('')
-            console.log('vm.setState==========================start')
+            console.log('【core】vm.setState==========================start')
             this.update()
-            console.log('series', this.series, this._metasets)
+            console.log('【core】series', this.series, this._metasets)
             this.updateComponent()
-            console.log('vm.setState==========================end')
+            console.log('【core】vm.setState==========================end')
             console.log('')
         },
         update() {
-            this.initChartArea()
+            this.getChartArea()
             this.resetMatesets()
 
             this.scales = this.initScales()
@@ -91,10 +97,9 @@ const KyueCore = Kyue.extend({
             })
             this.updateLayout()
         },
-        initChartArea() {
-            let domEl = this.$options.el
-            this.options.chartArea.width = parseInt(getStyle(domEl, 'width'))
-            this.options.chartArea.height = parseInt(getStyle(domEl, 'height'))
+        getChartArea() {
+            this.options.chartArea.width = parseInt(getStyle(this.domEl, 'width'))
+            this.options.chartArea.height = parseInt(getStyle(this.domEl, 'height'))
         },
         getScaleClass(type) {
             // 默认的比例尺
@@ -129,7 +134,7 @@ const KyueCore = Kyue.extend({
                     scale.init(scaleOptions, options.chartArea)   
                 })
             }
-            console.log('【vm】图形所实例化后的比例尺：scales', scales)
+            console.log('【core】图形所实例化后的比例尺：scales', scales)
             return scales
         },
         getSeriesClass(type) {
@@ -214,7 +219,7 @@ const KyueCore = Kyue.extend({
                 this.options.chartArea = chartArea
 
                 each(this.scales, (scale) => {
-                    console.log('scale', scale, chartArea)
+                    // console.log('scale', scale, chartArea)
                     let axis = scale.axis
                     let domain = this.getDomain(axis)
                     let range = this.getRange(axis, chartArea)
@@ -222,7 +227,7 @@ const KyueCore = Kyue.extend({
                         domain,
                         range
                     })
-                    console.log('12222', scale.ticks())
+                    // console.log('12222', scale.ticks())
                 })
             })
         }

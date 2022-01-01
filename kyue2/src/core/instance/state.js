@@ -25,12 +25,28 @@ export function initState(vm) {
 
     const opts = vm.$options
 
+    if (opts.props) {
+        debugger
+        initProps(vm, opts.props)
+    }
     if (opts.methods) {
         initMethods(vm, opts.methods)
     }
     
     if (opts.data) {
         initData(vm)
+    }
+}
+
+function initProps(vm, propsOptions) {
+    const propsData = vm.$options.propsData || {}
+    const props = vm._props = propsData
+
+    // TODO
+    for (const key in props) {
+        if (!(key in vm)) {
+            proxy(vm, `_props`, key)
+        }
     }
 }
 

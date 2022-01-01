@@ -345,17 +345,25 @@
         getStyle: getStyle
     });
 
+    let activeInstance = null;
     function lifecycleMixin(Kyue) {
       Kyue.prototype._update = function (vnode) {
         const vm = this;
+        console.log(`【vm${vm._uid}】图形组件执行更新，vm._update()`);
         const prevVnode = vm._vnode;
+        const prevActiveInstance = activeInstance;
+        activeInstance = vm;
         vm._vnode = vnode;
 
         if (!prevVnode) {
-          vm.$el = vm.__patch__(vm.$el, vnode);
+          vm.$el = vm.__patch__(vm.$el, vnode, vm);
         } else {
-          vm.$el = vm.__patch__(prevVnode, vnode);
+          vm.$el = vm.__patch__(prevVnode, vnode, vm);
         }
+
+        activeInstance = prevActiveInstance;
+        console.log(`【vm${vm._uid}】将生成的元素挂到实例的【$el】上，`, 'vm.$el =', vm.$el);
+        console.log(`【vm${vm._uid}】图形组件完成更新，vm._update()`);
       };
     }
     function initLifecycle(vm) {
@@ -382,6 +390,25 @@
       vm.updateComponent = updateComponent;
       updateComponent();
       return vm;
+    }
+    function updateChildComponent(vm, propsData, listeners, parentVnode, renderChildren) {
+      vm.$options._parentVnode = parentVnode;
+      vm.$vnode = parentVnode;
+
+      if (vm._vnode) {
+        vm._vnode.parent = parentVnode;
+      }
+
+      if (propsData && vm.$options.props) {
+        const props = vm._props;
+
+        for (let key in props) {
+          props[key] = propsData[key];
+        }
+
+        vm.$options.propsData = propsData;
+      } // TODO
+
     }
     function callHook(vm, hook) {
       let handlers = vm.$options[hook];
@@ -422,12 +449,28 @@
       vm._watchers = [];
       const opts = vm.$options;
 
+      if (opts.props) {
+        debugger;
+        initProps(vm, opts.props);
+      }
+
       if (opts.methods) {
         initMethods(vm, opts.methods);
       }
 
       if (opts.data) {
         initData(vm);
+      }
+    }
+
+    function initProps(vm, propsOptions) {
+      const propsData = vm.$options.propsData || {};
+      const props = vm._props = propsData; // TODO
+
+      for (const key in props) {
+        if (!(key in vm)) {
+          proxy(vm, `_props`, key);
+        }
       }
     }
 
@@ -461,14 +504,150 @@
     }
 
     class VNode {
-      constructor(tag, data, children, elm, context) {
+      constructor(options) {
+        const {
+          tag,
+          data,
+          children,
+          elm,
+          context,
+          componentOptions
+        } = options;
         this.tag = tag;
         this.data = data;
         this.children = children;
         this.elm = elm;
         this.context = context;
+        this.componentOptions = componentOptions;
       }
 
+    }
+
+    const componentVNodeHooks = {
+      init(vnode) {
+        const child = vnode.componentInstance = createComponentInstanceForVnode(vnode, activeInstance);
+        console.log(`   【patch vm${vnode.context._uid}】【组件元素】将实例挂到【vnode.componentInstance】上`);
+        child.$mount(undefined);
+      },
+
+      prepatch(oldVnode, vnode) {
+        var options = vnode.componentOptions;
+        var child = vnode.componentInstance = oldVnode.componentInstance;
+        updateChildComponent(child, options.propsData, options.listeners, vnode, options.children);
+      },
+
+      update(vnode) {
+        const componentInstance = vnode.componentInstance; // 子组件的更新，这里需要手动更新
+
+        componentInstance && componentInstance.updateComponent();
+      }
+
+    };
+    const hooksToMerge = Object.keys(componentVNodeHooks);
+
+    function extractPropsFromVNodeData(data, Ctor, tag) {
+      const propOptions = Ctor.options.props;
+
+      if (isUndef(propOptions)) {
+        return;
+      }
+
+      const res = {};
+      const {
+        attrs,
+        props
+      } = data;
+
+      if (isDef(attrs) || isDef(props)) {
+        for (let key in propOptions) {
+          checkProp(res, props, key, true) || checkProp(res, attrs, key, false);
+        }
+      }
+
+      return res;
+    }
+
+    function checkProp(res, hash, key, preserve) {
+      if (isDef(hash)) {
+        if (hasOwn(hash, key)) {
+          res[key] = hash[key];
+
+          if (!preserve) {
+            delete hash[key];
+            return true;
+          }
+        }
+      }
+
+      return false;
+    }
+
+    function createComponentVnode(options) {
+      let {
+        Ctor,
+        data,
+        children,
+        context,
+        tag
+      } = options;
+
+      if (isUndef(Ctor)) {
+        return;
+      }
+
+      const baseCtor = context.$options._base; // Kyue
+
+      if (isObject(Ctor)) {
+        Ctor = baseCtor.extend(Ctor);
+      }
+
+      if (typeof Ctor !== 'function') {
+        {
+          warn(`Invalid Component definition: ${String(Ctor)}`, context);
+        }
+
+        return;
+      }
+
+      data = data || {};
+      let propsData = extractPropsFromVNodeData(data, Ctor);
+      let listeners = {};
+      intallComponentHooks(data);
+      const name = Ctor.options.name || tag || 'app'; // TODO
+
+      const vnode = new VNode({
+        tag: `kyue-component-${Ctor.cid}${name ? `-${name}` : ''}`,
+        data,
+        context,
+        componentOptions: {
+          Ctor,
+          propsData,
+          children,
+          tag,
+          listeners
+        }
+      });
+      return vnode;
+    }
+    function createComponentInstanceForVnode(vnode, parent // 当前vm的实例
+    ) {
+      const options = {
+        _isComponent: true,
+        _parentVnode: vnode,
+        // 组件vnode，即占位符vnode
+        parent
+      };
+      console.log(`   【patch vm${vnode.context._uid}】【组件元素】执行实例化`, vnode.tag);
+      return new vnode.componentOptions.Ctor(options);
+    }
+
+    function intallComponentHooks(data) {
+      const hooks = data.hook || (data.hook = {});
+
+      for (let i = 0; i < hooksToMerge.length; i++) {
+        const key = hooksToMerge[i];
+        hooks[key] = componentVNodeHooks[key];
+      }
     }
 
     function createElement(context, tag, data, children) {
@@ -482,12 +661,31 @@
     function _createElement(context, tag, data, children) {
       if (Array.isArray(children)) {
         children = simpleNormalizeChildren(children);
+      } else if (children) {
+        // TODO
+        children = [children];
       }
 
       let vnode;
 
       if (typeof tag === 'string') {
-        vnode = new VNode(tag, data, children);
+        // 普通元素
+        console.log(`   【vnode vm${context._uid}】普通vnode创建`, tag);
+        vnode = new VNode({
+          tag,
+          data,
+          children,
+          context
+        });
+      } else {
+        // 组件
+        console.log(`   【vnode vm${context._uid}】【组件vnode】创建`, tag.options.name);
+        vnode = createComponentVnode({
+          Ctor: tag,
+          data,
+          children,
+          context
+        });
       }
 
       return vnode;
@@ -506,17 +704,23 @@
       Kyue.prototype._render = function () {
         const vm = this;
         const {
-          render
+          render,
+          _parentVnode
         } = vm.$options;
+        console.log(`【vm${vm._uid}】图形组件生成渲染vnode，vm._render()`); // 占位符vnode，初始化 _parentVnode 为 undefined
+
+        vm.$vnode = _parentVnode;
         let vnode;
 
         try {
           vnode = render.call(vm, vm.$createElement);
         } catch (e) {
           console.error(e);
-        } finally {}
+        } finally {} // 占位符vnode是渲染vnode的父级
 
-        console.log('渲染vnode', vnode);
+
+        vnode.parent = _parentVnode;
+        console.log(`【vm${vm._uid}】图形组件生成的渲染vnode:`, vnode);
         return vnode;
       };
     }
@@ -528,18 +732,17 @@
     let uid = 0;
     function initMixin(Kyue) {
       Kyue.prototype._init = function (options) {
-        console.log('【vm】图形组件实例化，vm._init()');
-        console.log('');
         const vm = this;
         vm._uid = uid++;
+        console.log(`【vm${vm._uid}】图形组件实例化，vm._init()`);
         vm._isKyue = true;
+        options = options || {};
 
-        if (options && options._isComponent) {
+        if (options._isComponent) {
           // 优化内部组件实例化，因为动态选项合并非常慢，并且没有内部组件选项需要特殊处理。
           initInternalComponent(vm, options);
         } else {
-          debugger;
-          vm.$options = mergeOptions(resolveConstructorOptions(vm.constructor), options || {}, vm);
+          vm.$options = mergeOptions(resolveConstructorOptions(vm.constructor), options, vm);
         }
 
         vm._self = vm;
@@ -626,11 +829,35 @@
 
     };
 
+    function createComponent(vnode, parentElm) {
+      let i = vnode.data || {};
+
+      if (isDef(i)) {
+        if (isDef(i = i.hook) && isDef(i = i.init)) {
+          i(vnode);
+        }
+
+        if (isDef(vnode.componentInstance)) {
+          initComponent(vnode);
+          insert(parentElm, vnode.elm);
+          console.log(`   【patch vm${vnode.context._uid}】【组件元素】插入元素，当前元素是：vnode.elm`, vnode.elm);
+          console.log(`   【patch vm${vnode.context._uid}】【组件元素】插入元素，其父元素是：`, parentElm);
+          console.log(`   【patch vm${vnode.context._uid}】【组件元素】插入完成`);
+          return true;
+        }
+      }
+    }
+
+    function initComponent(vnode) {
+      console.log(`   【patch vm${vnode.context._uid}】【组件元素】vnode.elm = vnode.componentInstance.$el`);
+      vnode.elm = vnode.componentInstance.$el;
+    }
+
     function sameVnode(a, b) {
       return a.tag === b.tag;
     }
 
-    function patchVnodeProps(elm, props, oldProps) {
+    function patchVnodeProps(elm, props, oldProps, callback) {
       let updatedProps = {};
       let willUpdate = false;
 
@@ -654,9 +881,22 @@
       if (willUpdate) {
         elm.setAttrs(updatedProps);
       }
+
+      callback && callback(willUpdate);
     }
 
     function createElm(vnode, parentElm) {
+      debugger;
+      /* 组件的创建 */
+
+      if (vnode.componentOptions) {
+        console.log(`   【patch vm${vnode.context._uid}】【组件元素】创建`, vnode.tag);
+      }
+
+      if (createComponent(vnode, parentElm)) {
+        return;
+      }
+
       const {
         tag,
         data,
@@ -665,6 +905,7 @@
 
       if (isDef(tag)) {
         vnode.elm = nodeOps.createElement(tag, vnode);
+        console.log(`   【patch vm${vnode.context._uid}】普通元素创建`, tag, vnode.elm);
         createChildren(vnode, children);
         insert(parentElm, vnode.elm);
       }
@@ -739,6 +980,13 @@
         return;
       }
 
+      let i;
+      const data = vnode.data; // 更新组件的属性
+
+      if (isDef(data) && isDef(i = data.hook) && isDef(i = i.prepatch)) {
+        i(oldVnode, vnode);
+      }
+
       const elm = vnode.elm = oldVnode.elm;
       const props = vnode.data && vnode.data.props || {};
       const oldProps = oldVnode.data && oldVnode.data.props || {};
@@ -746,7 +994,19 @@
       const ch = vnode.children;
 
       if (sameVnode(vnode, oldVnode)) {
-        patchVnodeProps(elm, props, oldProps);
+        patchVnodeProps(elm, props, oldProps, willUpdate => {
+          if (!willUpdate) {
+            return;
+          } // 更新组件
+
+
+          if (isDef(data) && isDef(i = data.hook) && isDef(i = i.update)) {
+            console.log(`   【patch】【组件元素】的属性更新`, vnode.tag);
+            i(vnode);
+          } else {
+            console.log(`   【patch】普通元素的属性更新`, vnode.tag);
+          }
+        });
       }
 
       if (isDef(oldCh) && isDef(ch)) {
@@ -756,20 +1016,29 @@
       }
     }
 
-    function patch(oldVnode, vnode) {
+    function patch(oldVnode, vnode, vm) {
+      console.log(`   【patch vm${vm._uid}】`, 'start');
       /**
        * 初始化，oldVnode为DOM节点，nodeType为1
        * 更新阶段，oldVnode为虚拟vnode
        */
       // console.log(oldVnode, vnode)
-      const isRealElement = oldVnode.nodeType === 1;
 
-      if (!isRealElement && sameVnode(oldVnode, vnode)) {
-        patchVnode(oldVnode, vnode);
+      if (isUndef(oldVnode)) {
+        // 组件渲染的情况，是没有oldVnode
+        createElm(vnode);
       } else {
-        createElm(vnode, oldVnode);
+        const isRealElement = oldVnode.nodeType === 1;
+
+        if (!isRealElement && sameVnode(oldVnode, vnode)) {
+          patchVnode(oldVnode, vnode);
+        } else {
+          // oldVode 是一个真实的DOM元素，oldVnode可以转为一个空的vnode `TODO`
+          createElm(vnode, oldVnode);
+        }
       }
 
+      console.log(`   【patch vm${vm._uid}】`, 'end');
       return vnode.elm;
     }
 
@@ -4516,7 +4785,9 @@
     }
 
     Kyue.prototype.$mount = function (el) {
-      // compile TODO
+      const vm = this;
+      console.log(`【vm${vm._uid}】图形组件执行挂载，vm.$mount()`); // compile TODO
+
       const options = this.$options;
 
       if (!options.render) {
@@ -4527,8 +4798,7 @@
       return mountComponent(this, el);
     };
 
-    Kyue.prototype.__patch__ = patch; // Kyue.prototype.__patch__ = () => {}
-
+    Kyue.prototype.__patch__ = patch;
     Kyue.Scales = Scales;
     Kyue.LinearScale = LinearScale;
     Kyue.CategoryScale = CategoryScale;

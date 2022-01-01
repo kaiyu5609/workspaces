@@ -1,5 +1,5 @@
-div {
-    padding: 5px 5px;
-    margin: 5px 5px;
-    border: 1px solid #0eaf52;
+div#app {
+    position: relative;
+    height: 300px;
+    border: 2px solid #0eaf52;
 }

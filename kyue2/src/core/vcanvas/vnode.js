@@ -1,16 +1,20 @@
 export default class VNode {
-    constructor(
-        tag, 
-        data, 
-        children, 
-        elm,
-        context
-    ) {
+    constructor(options) {
+        const {
+            tag, 
+            data, 
+            children, 
+            elm,
+            context,
+            componentOptions
+        } = options
+        
         this.tag = tag
         this.data = data
         this.children = children
         this.elm = elm
         this.context = context
+        this.componentOptions = componentOptions
     }
 }
 

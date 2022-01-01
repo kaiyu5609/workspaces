@@ -1,16 +1,19 @@
 'use strict'
 import logger from './logger'
 import './index.css'
-import KyueCore from './core'
+import Chart from './Chart'
+import GridBox from './GridBox'
+import Axis from './Axis'
+import Line from './Line'
 
 var log = logger('example')
 
 console.log('图形组件注册【Scales】插件')
-KyueCore.use(KyueCore.Scales, {
+Chart.use(Chart.Scales, {
     'key': 'params'
 })
 console.log('实例化【Scales】插件')
-var scales = new KyueCore.Scales({})
+var scales = new Chart.Scales({})
 // 内置比例尺不满足业务需求，可以注册自定义的比例尺
 class CustomLinear {}
 CustomLinear.id = 'customlinear'
@@ -113,7 +116,7 @@ const datasets2 = [
     }
 ]
 
-var vm = new KyueCore({
+var vm = new Chart({
     el: document.querySelector('#app'),
     scales,
     data() {
@@ -156,63 +159,62 @@ var vm = new KyueCore({
                 this.datasets = datasets || []
                 this.setState()
             }, 2000)
-        }
-    },
-    mounted() {
-        console.log('child.mounted')
-        this.loadData()
-    },
-    render(h) {
-        console.log('实例渲染，vm.render()')
-        const chartArea = this.options.chartArea
-        const { 
-            width,
-            height,
-            left,
-            right,
-            top,
-            bottom
-        } = chartArea
-        
+        },
+        getGridDataset(chartArea) {
+            let { 
+                width,
+                height,
+                left,
+                right,
+                top,
+                bottom
+            } = chartArea
 
-        let children = []
-        let rects = [
-            h('Rect', {
-                props: {
+            const dataset = {
+                rects: [{
                     x: left,
                     y: top,
                     width: width - left - right,
                     height: height - top - bottom,
                     stroke: '#ccc',
                     strokeWidth: 1
-                }
-            })
-        ]
-        let lines = []
-        let circles = []
+                }]
+            }
 
-        var xAxisLines = []
-        var xAxisLabels = []
-        var xscale = this.getScale('x')
-        if (xscale) {
-            var ticks = xscale.ticks()
-            ticks.forEach(d => {
-                var x = xscale.getValue(d)
-                var y1 = top
-                var y2 = height - bottom
-                var points = [x, y1, x, y2]
+            return dataset
+        },
+        getXAxisDataset(chartArea) {
+            const { 
+                width,
+                height,
+                left,
+                right,
+                top,
+                bottom
+            } = chartArea
 
-                var line = h('Line', {
-                    props: {
+            const dataset = {
+                lines: [],
+                labels: []
+            }
+
+            var xscale = this.getScale('x')
+            if (xscale) {
+                var ticks = xscale.ticks()
+                ticks.forEach(d => {
+                    var x = xscale.getValue(d)
+                    var y1 = top
+                    var y2 = height - bottom
+                    var points = [x, y1, x, y2]
+
+                    var line = {
                         points,
                         strokeWidth: 1,
                         stroke: '#ccc'
                     }
-                })
-                xAxisLines.push(line)
+                    dataset.lines.push(line)
 
-                var label = h('Text', {
-                    props: {
+                    var label = {
                         x: x - 15,
                         y: y2 + 5,
                         width: 30,
@@ -221,36 +223,43 @@ var vm = new KyueCore({
                         fill: '#aaa',
                         align: 'center'
                     }
+                    dataset.labels.push(label)
                 })
+            }
+            return dataset
+        },
+        getYAxisDataset(chartArea) {
+            const { 
+                width,
+                height,
+                left,
+                right,
+                top,
+                bottom
+            } = chartArea
 
-                xAxisLabels.push(label)
-            })
-        }
-        console.log('xAxisLabels', xAxisLabels)
+            const dataset = {
+                lines: [],
+                labels: []
+            }
 
+            var yscale = this.getScale('y')
+            if (yscale) {
+                var ticks = yscale.ticks()
+                ticks.forEach(d => {
+                    var y = yscale.getValue(d)
+                    var x1 = left
+                    var x2 = width - right
+                    var points = [x1, y, x2, y]
 
-        var yAxisLines = []
-        var yAxisLabels = []
-        var yscale = this.getScale('y')
-        if (yscale) {
-            var ticks = yscale.ticks()
-            ticks.forEach(d => {
-                var y = yscale.getValue(d)
-                var x1 = left
-                var x2 = width - right
-                var points = [x1, y, x2, y]
-
-                var line = h('Line', {
-                    props: {
+                    var line = {
                         points,
                         strokeWidth: 1,
                         stroke: '#ccc'
                     }
-                })
-                yAxisLines.push(line)
+                    dataset.lines.push(line)
 
-                var label = h('Text', {
-                    props: {
+                    var label = {
                         x: x1 - 35,
                         y: y - 6,
                         width: 30,
@@ -259,53 +268,73 @@ var vm = new KyueCore({
                         fill: '#aaa',
                         align: 'right'
                     }
+                    dataset.labels.push(label)
                 })
+            }
+            return dataset
+        },
+        getLineDataset() {
+            const dataset = {
+                lines: [],
+                circles: []
+            }
 
-                yAxisLabels.push(label)
-            })
-        }
-
-        console.log('yAxisLines', yAxisLines)
-
-        this.datasets.forEach((dataset) => {
-            let xScale = this.getScale(dataset.xScaleId)
-            let yScale = this.getScale(dataset.yScaleId)
-
-            let points = []
-            dataset.data.forEach(d => {
-                let x = xScale.getValue(d.x)
-                let y = yScale.getValue(d.y)
-
-                // points
-                points.push(x, y)
-
-                // circle
-                let props = {
-                    x,
-                    y,
-                    radius: 6,
-                    strokeWidth: 1,
-                    fill: dataset.itemStyle.color,
-                    // stroke: '#666'
-                }
-                let circle = h('Circle', {
-                    props
+            this.datasets.forEach((datasetItem) => {
+                let xScale = this.getScale(datasetItem.xScaleId)
+                let yScale = this.getScale(datasetItem.yScaleId)
+    
+                let points = []
+                datasetItem.data.forEach(d => {
+                    let x = xScale.getValue(d.x)
+                    let y = yScale.getValue(d.y)
+    
+                    // points
+                    points.push(x, y)
+    
+                    // circle
+                    let circle = {
+                        x,
+                        y,
+                        radius: 5,
+                        strokeWidth: 1,
+                        fill: datasetItem.itemStyle.color,
+                        // stroke: '#666'
+                    }
+                    dataset.circles.push(circle)
                 })
-                circles.push(circle)
-            })
-
-            // console.log('points', points)
-            let line = h('Line', {
-                props: {
+    
+                // console.log('points', points)
+                let line = {
                     points,
                     strokeWidth: 1,
-                    stroke: dataset.color
+                    stroke: datasetItem.color
                 }
+                dataset.lines.push(line)
             })
-            lines.push(line)
-        })
 
-        children = children.concat(rects, lines, circles)
+            return dataset
+        }
+    },
+    mounted() {
+        this.loadData()
+    },
+    render(h) {
+        let chartArea = this.options.chartArea
+        let { width, height } = chartArea
+        // console.log('实例渲染，vm.render()', chartArea)
+        
+        let gridDataset = this.getGridDataset(chartArea)
+        // console.log('gridDataset', gridDataset)
+
+        var xAxisDataset = this.getXAxisDataset(chartArea)
+        // console.log('xAxisDataset', xAxisDataset)
+
+        var yAxisDataset = this.getYAxisDataset(chartArea)
+        // console.log('yAxisDataset', yAxisDataset)
+
+        var lineDataset = this.getLineDataset()
+        // console.log('lineDataset', lineDataset)
+
 
         return h('Stage', {
             props: {
@@ -314,16 +343,33 @@ var vm = new KyueCore({
                 height
             }
         }, [
-            h('Layer', {}, xAxisLines),
-            h('Layer', {}, xAxisLabels),
-            h('Layer', {}, yAxisLines),
-            h('Layer', {}, yAxisLabels),
-            h('Layer', {}, children)
+            h('Layer', {}, [
+                h(GridBox, {
+                    props: {
+                        dataset: gridDataset
+                    }
+                }),
+                h(Axis, {
+                    props: {
+                        dataset: xAxisDataset
+                    }
+                }),
+                h(Axis, {
+                    props: {
+                        dataset: yAxisDataset
+                    }
+                }),
+                h(Line, {
+                    props: {
+                        dataset: lineDataset
+                    }
+                })
+            ])
         ])
     }
 })
 
 
-log('Kyue.version', KyueCore.version)
+log('Kyue.version', Chart.version)
 log('vm:', vm)
 log('message:', vm.message)

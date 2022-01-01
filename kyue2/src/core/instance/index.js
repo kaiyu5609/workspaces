@@ -15,6 +15,8 @@ function Kyue(options) {
 }
 
 Kyue.prototype.$mount = function(el) {
+    const vm = this
+    console.log(`【vm${vm._uid}】图形组件执行挂载，vm.$mount()`)
     // compile TODO
     const options = this.$options
     
@@ -27,9 +29,6 @@ Kyue.prototype.$mount = function(el) {
 }
 
 Kyue.prototype.__patch__ = patch
-// Kyue.prototype.__patch__ = () => {}
-
-
 
 Kyue.Scales = Scales
 Kyue.LinearScale = LinearScale

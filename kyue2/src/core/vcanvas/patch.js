@@ -1,4 +1,4 @@
-import { isDef, noop } from "../util"
+import { isDef, isUndef } from "../util"
 import Konva from "konva"
 
 const nodeOps = {
@@ -20,11 +20,38 @@ const nodeOps = {
     }
 }
 
+
+function createComponent(vnode, parentElm) {
+    let i = vnode.data || {}
+    if (isDef(i)) {
+
+        if (isDef(i = i.hook) && isDef(i = i.init)) {
+            i(vnode)
+        }
+
+        if (isDef(vnode.componentInstance)) {
+            initComponent(vnode)
+            insert(parentElm, vnode.elm)
+            console.log(`   【patch vm${vnode.context._uid}】【组件元素】插入元素，当前元素是：vnode.elm`, vnode.elm)
+            console.log(`   【patch vm${vnode.context._uid}】【组件元素】插入元素，其父元素是：`, parentElm)
+            console.log(`   【patch vm${vnode.context._uid}】【组件元素】插入完成`)
+            return true
+        }
+    }
+}
+
+function initComponent(vnode) {
+    console.log(`   【patch vm${vnode.context._uid}】【组件元素】vnode.elm = vnode.componentInstance.$el`)
+    vnode.elm = vnode.componentInstance.$el
+}
+
+
+
 function sameVnode(a, b) {
     return a.tag === b.tag
 }
 
-function patchVnodeProps(elm, props, oldProps) {
+function patchVnodeProps(elm, props, oldProps, callback) {
     let updatedProps = {}
     let willUpdate = false
 
@@ -44,13 +71,24 @@ function patchVnodeProps(elm, props, oldProps) {
     if (willUpdate) {
         elm.setAttrs(updatedProps)
     }
+
+    callback && callback(willUpdate)
 }
 
 function createElm(vnode, parentElm) {
+    debugger
+    /* 组件的创建 */
+    if (vnode.componentOptions) {
+        console.log(`   【patch vm${vnode.context._uid}】【组件元素】创建`, vnode.tag)
+    }
+    if (createComponent(vnode, parentElm)) {
+        return
+    }
     const { tag, data, children } = vnode
 
     if (isDef(tag)) {
         vnode.elm = nodeOps.createElement(tag, vnode)
+        console.log(`   【patch vm${vnode.context._uid}】普通元素创建`, tag, vnode.elm)
 
         createChildren(vnode, children)
 
@@ -129,6 +167,13 @@ function patchVnode(oldVnode, vnode) {
         return
     }
 
+    let i
+    const data = vnode.data
+    // 更新组件的属性
+    if (isDef(data) && isDef(i = data.hook) && isDef(i = i.prepatch)) {
+        i(oldVnode, vnode)
+    }
+
     const elm = vnode.elm = oldVnode.elm
     const props = vnode.data && vnode.data.props || {}
     const oldProps = oldVnode.data && oldVnode.data.props || {}
@@ -136,7 +181,19 @@ function patchVnode(oldVnode, vnode) {
     const ch = vnode.children
 
     if (sameVnode(vnode, oldVnode)) {
-        patchVnodeProps(elm, props, oldProps)
+        patchVnodeProps(elm, props, oldProps, (willUpdate) => {
+            if (!willUpdate) {
+                return
+            }
+            
+            // 更新组件
+            if (isDef(data) && isDef(i = data.hook) && isDef(i = i.update)) {
+                console.log(`   【patch】【组件元素】的属性更新`, vnode.tag)
+                i(vnode)
+            } else {
+                console.log(`   【patch】普通元素的属性更新`, vnode.tag)
+            }
+        })
     }
 
     if (isDef(oldCh) && isDef(ch)) {
@@ -146,20 +203,28 @@ function patchVnode(oldVnode, vnode) {
     }
 }
 
-export function patch(oldVnode, vnode) {
+export function patch(oldVnode, vnode, vm) {
+    console.log(`   【patch vm${vm._uid}】`, 'start')
     /**
      * 初始化，oldVnode为DOM节点，nodeType为1
      * 更新阶段，oldVnode为虚拟vnode
      */
-
     // console.log(oldVnode, vnode)
 
-    const isRealElement = oldVnode.nodeType === 1
-    if (!isRealElement && sameVnode(oldVnode, vnode)) {
-        patchVnode(oldVnode, vnode)
+    if (isUndef(oldVnode)) {
+        // 组件渲染的情况，是没有oldVnode
+        createElm(vnode)
     } else {
-        createElm(vnode, oldVnode)
+        const isRealElement = oldVnode.nodeType === 1
+        if (!isRealElement && sameVnode(oldVnode, vnode)) {
+            patchVnode(oldVnode, vnode)
+        } else {
+            // oldVode 是一个真实的DOM元素，oldVnode可以转为一个空的vnode `TODO`
+            createElm(vnode, oldVnode)
+        }
     }
+    console.log(`   【patch vm${vm._uid}】`, 'end')
     return vnode.elm
 }
+
 
