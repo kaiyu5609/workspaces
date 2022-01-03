@@ -76,7 +76,6 @@ function patchVnodeProps(elm, props, oldProps, callback) {
 }
 
 function createElm(vnode, parentElm) {
-    debugger
     /* 组件的创建 */
     if (vnode.componentOptions) {
         console.log(`   【patch vm${vnode.context._uid}】【组件元素】创建`, vnode.tag)

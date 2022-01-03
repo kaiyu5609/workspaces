@@ -17,7 +17,6 @@ export function renderMixin(Kyue) {
         } finally {
 
         }
-
         // 占位符vnode是渲染vnode的父级
         vnode.parent = _parentVnode
         console.log(`【vm${vm._uid}】图形组件生成的渲染vnode:`, vnode)

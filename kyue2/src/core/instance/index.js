@@ -28,14 +28,6 @@ Kyue.prototype.$mount = function(el) {
     return mountComponent(this, el)
 }
 
-Kyue.prototype.__patch__ = patch
-
-Kyue.Scales = Scales
-Kyue.LinearScale = LinearScale
-Kyue.CategoryScale = CategoryScale
-
-Kyue.Line = Line
-
 /**
  * 1、给实例添加_init方法
  * 2、组件调用 $mount 方法进行挂载
@@ -53,6 +45,23 @@ lifecycleMixin(Kyue)
  *  该方法生成虚拟DOM：vnode
  */ 
 renderMixin(Kyue)
+
+/**
+ * diff算法函数
+ */
+ Kyue.prototype.__patch__ = patch
+
+ /**
+  * 内置比例尺
+  */
+ Kyue.Scales = Scales
+ Kyue.LinearScale = LinearScale
+ Kyue.CategoryScale = CategoryScale
+ 
+ /**
+  * 内置图形类型
+  */
+ Kyue.Line = Line
 
 
 export default Kyue

@@ -8,6 +8,9 @@ export function lifecycleMixin(Kyue) {
         const prevActiveInstance = activeInstance
         activeInstance = vm
 
+        /**
+         * 组件的渲染vnode
+         */
         vm._vnode = vnode
 
         if (!prevVnode) {
@@ -60,7 +63,13 @@ export function updateChildComponent(
     parentVnode,
     renderChildren
 ) {
+    /**
+     * _parentVnode，实例化之前传入的，组件的vnode
+     */
     vm.$options._parentVnode = parentVnode
+    /**
+     * $vnode是组件的vnode，可称作占位符vnode
+     */ 
     vm.$vnode = parentVnode
 
     if (vm._vnode) {

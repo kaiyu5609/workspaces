@@ -1,7 +1,7 @@
 
 /**
  * Kyue v1.0.0
- * (c) 2021 kaiyu5609
+ * (c) 2022 kaiyu5609
  * @license MIT
  */
 
@@ -353,6 +353,10 @@
         const prevVnode = vm._vnode;
         const prevActiveInstance = activeInstance;
         activeInstance = vm;
+        /**
+         * 组件的渲染vnode
+         */
+
         vm._vnode = vnode;
 
         if (!prevVnode) {
@@ -392,7 +396,14 @@
       return vm;
     }
     function updateChildComponent(vm, propsData, listeners, parentVnode, renderChildren) {
+      /**
+       * _parentVnode，实例化之前传入的，组件的vnode
+       */
       vm.$options._parentVnode = parentVnode;
+      /**
+       * $vnode是组件的vnode，可称作占位符vnode
+       */
+
       vm.$vnode = parentVnode;
 
       if (vm._vnode) {
@@ -450,7 +461,6 @@
       const opts = vm.$options;
 
       if (opts.props) {
-        debugger;
         initProps(vm, opts.props);
       }
 
@@ -483,9 +493,7 @@
       while (i--) {
         const key = keys[i];
         proxy(vm, `_data`, key);
-      } // observe data
-      // observe(data, true)/* asRootData */
-
+      }
     }
 
     function getData(data, vm) {
@@ -527,6 +535,7 @@
       init(vnode) {
         const child = vnode.componentInstance = createComponentInstanceForVnode(vnode, activeInstance);
         console.log(`   【patch vm${vnode.context._uid}】【组件元素】将实例挂到【vnode.componentInstance】上`);
+        console.log(`   【patch vm${vnode.context._uid}】【组件元素】的实例`, child);
         child.$mount(undefined);
       },
 
@@ -740,7 +749,7 @@
 
         if (options._isComponent) {
           // 优化内部组件实例化，因为动态选项合并非常慢，并且没有内部组件选项需要特殊处理。
-          initInternalComponent(vm, options);
+          vm.$options = initInternalComponent(vm, options);
         } else {
           vm.$options = mergeOptions(resolveConstructorOptions(vm.constructor), options, vm);
         }
@@ -785,20 +794,37 @@
         callHook(vm, 'mounted');
       };
     }
+    /**
+     * 
+     * @param {*} vm 
+     * @param {*} options 
+     *  {
+     *      parent: vm,// 父级组件实例vm
+     *      _isComponent: true,
+     *      _parentVnode: Vnode,// 当前组件的vnode 
+     *  }
+     */
+
     function initInternalComponent(vm, options) {
-      const opts = vm.$options = Object.create(vm.constructor.options);
+      const opts = Object.create(vm.constructor.options);
       const parentVnode = options._parentVnode;
       opts.parent = options.parent;
       opts._parentVnode = parentVnode;
+      /**
+       * componentOptions: {
+       *      propsData,
+       *      listeners,
+       *      children,
+       *      tag
+       * }
+       */
+
       const vnodeComponentOptions = parentVnode.componentOptions;
       opts.propsData = vnodeComponentOptions.propsData;
       opts._parentListeners = vnodeComponentOptions.listeners;
       opts._renderChildren = vnodeComponentOptions.children;
       opts._componentTag = vnodeComponentOptions.tag;
-
-      if (options.render) {
-        opts.render = options.render;
-      }
+      return opts;
     }
     function resolveConstructorOptions(Ctor) {
       let options = Ctor.options; // TODO
@@ -886,9 +912,7 @@
     }
 
     function createElm(vnode, parentElm) {
-      debugger;
       /* 组件的创建 */
-
       if (vnode.componentOptions) {
         console.log(`   【patch vm${vnode.context._uid}】【组件元素】创建`, vnode.tag);
       }
@@ -4797,16 +4821,11 @@
       el = el && query(el);
       return mountComponent(this, el);
     };
-
-    Kyue.prototype.__patch__ = patch;
-    Kyue.Scales = Scales;
-    Kyue.LinearScale = LinearScale;
-    Kyue.CategoryScale = CategoryScale;
-    Kyue.Line = Line;
     /**
      * 1、给实例添加_init方法
      * 2、组件调用 $mount 方法进行挂载
      */
+
 
     initMixin(Kyue);
     /**
@@ -4821,6 +4840,23 @@
      */
 
     renderMixin(Kyue);
+    /**
+     * diff算法函数
+     */
+
+    Kyue.prototype.__patch__ = patch;
+    /**
+     * 内置比例尺
+     */
+
+    Kyue.Scales = Scales;
+    Kyue.LinearScale = LinearScale;
+    Kyue.CategoryScale = CategoryScale;
+    /**
+     * 内置图形类型
+     */
+
+    Kyue.Line = Line;
 
     function initUse(Kyue) {
       Kyue.use = function (plugin) {
@@ -4878,7 +4914,7 @@
         Sub.super = Super;
         Sub.extend = Super.extend;
         Sub.mixin = Super.mixin;
-        Sub.use = Super.use; // TODO
+        Sub.use = Super.use; // Scales TODO
 
         Sub.Scales = Super.Scales;
         Sub.LinearScale = Super.LinearScale;

@@ -6,6 +6,7 @@ const componentVNodeHooks = {
     init(vnode) {
         const child = vnode.componentInstance = createComponentInstanceForVnode(vnode, activeInstance)
         console.log(`   【patch vm${vnode.context._uid}】【组件元素】将实例挂到【vnode.componentInstance】上`)
+        console.log(`   【patch vm${vnode.context._uid}】【组件元素】的实例`, child)
         child.$mount(undefined)
     },
     prepatch(oldVnode, vnode) {

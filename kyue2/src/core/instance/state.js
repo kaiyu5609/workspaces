@@ -1,5 +1,4 @@
 import { noop, bind } from '../util/index'
-// import { observe } from '../observer/index'
 
 const sharedPropertyDefinition = {
     enumerable: true,
@@ -26,7 +25,6 @@ export function initState(vm) {
     const opts = vm.$options
 
     if (opts.props) {
-        debugger
         initProps(vm, opts.props)
     }
     if (opts.methods) {
@@ -65,9 +63,6 @@ function initData(vm) {
 
         proxy(vm, `_data`, key)
     }
-
-    // observe data
-    // observe(data, true)/* asRootData */
 }
 
 export function getData(data, vm) {
@@ -82,7 +77,6 @@ export function getData(data, vm) {
 }
 
 function initMethods(vm, methods) {
-
     for (const key in methods) {
         vm[key] = typeof methods[key] !== 'function' ? noop : bind(methods[key], vm)
     }

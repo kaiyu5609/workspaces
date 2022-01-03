@@ -32,7 +32,7 @@ export function initExtend(Kyue) {
         Sub.mixin = Super.mixin
         Sub.use = Super.use
 
-        // TODO
+        // Scales TODO
         Sub.Scales = Super.Scales
         Sub.LinearScale = Super.LinearScale
         Sub.CategoryScale = Super.CategoryScale
