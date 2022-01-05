@@ -24,7 +24,7 @@ var vm = new Kyue({
                 y: 100,
                 width: 200,
                 height: 100,
-                stroke: 'black',
+                stroke: 'orange',
                 strokeWidth: 1
             }
         }
