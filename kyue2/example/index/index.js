@@ -10,8 +10,8 @@ var vm = new Kyue({
                 x: 150,
                 y: 150,
                 radius: 60,
-                stroke: 'orange',
                 strokeWidth: 2,
+                stroke: 'orange',
                 fill: 'lightblue'
             }
         }
@@ -20,7 +20,7 @@ var vm = new Kyue({
         return h('Stage', {
             props: {
                 container: this.$options.el,
-                width: Math.random() > 0.5 ? 500 : 600, 
+                width: 600, 
                 height: 300
             }
         }, [
